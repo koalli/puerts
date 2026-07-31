@@ -373,7 +373,7 @@ async function runPuertsMake(cwd, options) {
     if (options.config == 'Debug' || options.with_inspector) {
         BackendConfig.definition.push("WITH_INSPECTOR");
     }
-    if (options.thread_safe) {
+    if (options.thread_safe && options.backend != "quickjs") {
         console.log('################################## thread_safe ##################################');
         BackendConfig.definition.push("THREAD_SAFE");
     }
