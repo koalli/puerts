@@ -2,7 +2,7 @@ name: build wasm unity plugin
 
 inputs:
   backend:
-    description: 'js backend'     
+    description: 'js backend'
     required: true
   config:
     type: choice
@@ -12,7 +12,7 @@ inputs:
     - Release
     - Debug
   build_proj_dir:
-    description: 'build project dir'     
+    description: 'build project dir'
     required: false
     default: 'native_src'
   GITHUB_TOKEN:
@@ -41,7 +41,7 @@ runs:
         ./emsdk activate 3.1.8
         source ./emsdk_env.sh
         cd ../${{ inputs.build_proj_dir }}
-        node ../cli make --platform wasm --arch wasm32 --backend quickjs --config ${{ inputs.config }}
+        node ../cli make --platform wasm --arch wasm32 --backend quickjs --config ${{ inputs.config }} --thread_safe
     - name: Upload
       uses: actions/upload-artifact@v4
       with:
