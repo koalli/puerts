@@ -368,16 +368,21 @@ void FBackendEnv::Initialize(void* external_quickjs_runtime, void* external_quic
 
 void FBackendEnv::UnInitialize()
 {
-#ifdef THREAD_SAFE
-    v8::Locker Locker(MainIsolate);
-#endif
 #if defined(WITH_QUICKJS)
     JS_FreeValueRT(MainIsolate->runtime_, JsFileNormalize);
     JS_FreeValueRT(MainIsolate->runtime_, JsFileLoader);
 #endif
 #if WITH_NODEJS
-    // node::EmitExit(NodeEnv);
-    node::Stop(NodeEnv);
+    // node::Stop 会执行 JS 清理钩子（构造 HandleScope），必须持锁；
+    // 锁必须在此处析构，绝不能跨越 MainIsolate->Dispose()——Locker 析构会访问
+    // isolate，Dispose 后再析构 Locker 是 use-after-free。Dispose 本身不构造
+    // HandleScope，无需持锁。
+    {
+#ifdef THREAD_SAFE
+        v8::Locker Locker(MainIsolate);
+#endif
+        node::Stop(NodeEnv);
+    }
     node::FreeEnvironment(NodeEnv);
     node::FreeIsolateData(NodeIsolateData);
     auto Platform = static_cast<node::MultiIsolatePlatform*>(GPlatform.get());
