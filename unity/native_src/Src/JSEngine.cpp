@@ -154,29 +154,31 @@ namespace PUERTS_NAMESPACE
         BackendEnv.StopPolling();
         DestroyInspector();
 
-        JSObjectIdMap.Reset();
-        BackendEnv.JsPromiseRejectCallback.Reset();
-        LastException.Reset();
-
-        for (int i = 0; i < Templates.size(); ++i)
+        // 析构链上所有 V8 操作（Global::Reset、JSFunction/JSObject 的 delete、
+        // CppObjectMapper 清理回调等）都必须在同一把锁内执行；锁在此作用域末尾
+        // 析构，先于 BackendEnv.UnInitialize() 里的 MainIsolate->Dispose()，
+        // 避免 Locker 访问已销毁 isolate 的 use-after-free。
         {
-            Templates[i].Reset();
-        }
-        for (int i = 0; i < Metadatas.size(); ++i)
-        {
-            Metadatas[i].Reset();
-        }
-
-        {
-            auto Isolate = MainIsolate;
 #ifdef THREAD_SAFE
-            v8::Locker Locker(Isolate);
+            v8::Locker Locker(MainIsolate);
 #endif
-            v8::Isolate::Scope IsolateScope(Isolate);
-            v8::HandleScope HandleScope(Isolate);
-            auto Context = ResultInfo.Context.Get(Isolate);
-            v8::Context::Scope ContextScope(Context);
+            v8::Isolate::Scope IsolateScope(MainIsolate);
+            v8::HandleScope HandleScope(MainIsolate);
 
+            JSObjectIdMap.Reset();
+            BackendEnv.JsPromiseRejectCallback.Reset();
+            LastException.Reset();
+
+            for (int i = 0; i < Templates.size(); ++i)
+            {
+                Templates[i].Reset();
+            }
+            for (int i = 0; i < Metadatas.size(); ++i)
+            {
+                Metadatas[i].Reset();
+            }
+
+            auto Context = ResultInfo.Context.Get(MainIsolate);
             for (auto Iter = ObjectMap.begin(); Iter != ObjectMap.end(); ++Iter)
             {
                 auto Value = Iter->second.Get(MainIsolate);
@@ -194,46 +196,47 @@ namespace PUERTS_NAMESPACE
             }
             BackendEnv.PathToModuleMap.clear();
             BackendEnv.ScriptIdToPathMap.clear();
-        }
-        {
-            std::lock_guard<std::mutex> guard(JSFunctionsMutex);
-            for (auto Iter = JSFunctions.begin(); Iter != JSFunctions.end(); ++Iter)
-            {
-                delete *Iter;
-            }
-        }
-        {
-            std::lock_guard<std::mutex> guard(JSObjectsMutex);
-            for (auto Iter = JSObjectMap.begin(); Iter != JSObjectMap.end(); ++Iter)
-            {
-                delete Iter->second;
-            }
-        }
 
-        ResultInfo.Context.Reset();
-        ResultInfo.Result.Reset();
+            {
+                std::lock_guard<std::mutex> guard(JSFunctionsMutex);
+                for (auto Iter = JSFunctions.begin(); Iter != JSFunctions.end(); ++Iter)
+                {
+                    delete *Iter;
+                }
+            }
+            {
+                std::lock_guard<std::mutex> guard(JSObjectsMutex);
+                for (auto Iter = JSObjectMap.begin(); Iter != JSObjectMap.end(); ++Iter)
+                {
+                    delete Iter->second;
+                }
+            }
+
+            ResultInfo.Context.Reset();
+            ResultInfo.Result.Reset();
 
 #ifdef WITH_IL2CPP_OPTIMIZATION
 #ifdef WITH_QUICKJS
-        CppObjectMapperQjs.Cleanup();
+            CppObjectMapperQjs.Cleanup();
 #endif
 #ifdef WITH_V8
-        CppObjectMapperV8.UnInitialize(MainIsolate);
+            CppObjectMapperV8.UnInitialize(MainIsolate);
 #endif
 #endif
 
-        for (int i = 0; i < CallbackWithFinalizeInfos.size(); ++i)
-        {
-            CallbackWithFinalizeInfos[i]->JsFunction.Reset();
+            for (int i = 0; i < CallbackWithFinalizeInfos.size(); ++i)
+            {
+                CallbackWithFinalizeInfos[i]->JsFunction.Reset();
+            }
         }
-        
+
         BackendEnv.UnInitialize();
 
         for (int i = 0; i < CallbackInfos.size(); ++i)
         {
             delete CallbackInfos[i];
         }
-        
+
         for (int i = 0; i < CallbackWithFinalizeInfos.size(); ++i)
         {
             delete CallbackWithFinalizeInfos[i];
