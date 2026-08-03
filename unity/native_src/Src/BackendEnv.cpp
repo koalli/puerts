@@ -368,6 +368,9 @@ void FBackendEnv::Initialize(void* external_quickjs_runtime, void* external_quic
 
 void FBackendEnv::UnInitialize()
 {
+#ifdef THREAD_SAFE
+    v8::Locker Locker(MainIsolate);
+#endif
 #if defined(WITH_QUICKJS)
     JS_FreeValueRT(MainIsolate->runtime_, JsFileNormalize);
     JS_FreeValueRT(MainIsolate->runtime_, JsFileLoader);
