@@ -373,26 +373,35 @@ void FBackendEnv::UnInitialize()
     JS_FreeValueRT(MainIsolate->runtime_, JsFileLoader);
 #endif
 #if WITH_NODEJS
-    // node::Stop 会执行 JS 清理钩子（构造 HandleScope），必须持锁；
-    // 锁必须在此处析构，绝不能跨越 MainIsolate->Dispose()——Locker 析构会访问
-    // isolate，Dispose 后再析构 Locker 是 use-after-free。Dispose 本身不构造
-    // HandleScope，无需持锁。
+    // node::Stop 会执行 JS 清理钩子（构造 HandleScope），FreeEnvironment/
+    // FreeIsolateData/UnregisterIsolate 同样会触碰 V8，必须在同一把锁内；
+    // 锁在此作用域末尾析构，绝不能跨越 MainIsolate->Dispose()——Locker 析构
+    // 会访问 isolate，Dispose 后再析构 Locker 是 use-after-free。Dispose 本身
+    // 不构造 HandleScope，无需持锁。
     {
 #ifdef THREAD_SAFE
         v8::Locker Locker(MainIsolate);
 #endif
         node::Stop(NodeEnv);
+        node::FreeEnvironment(NodeEnv);
+        node::FreeIsolateData(NodeIsolateData);
+        auto Platform = static_cast<node::MultiIsolatePlatform*>(GPlatform.get());
+        // bool platform_finished = false;
+        // Platform->AddIsolateFinishedCallback(MainIsolate, [](void* data) {
+        //     *static_cast<bool*>(data) = true;
+        // }, &platform_finished);
+        Platform->UnregisterIsolate(MainIsolate);
     }
-    node::FreeEnvironment(NodeEnv);
-    node::FreeIsolateData(NodeIsolateData);
-    auto Platform = static_cast<node::MultiIsolatePlatform*>(GPlatform.get());
-    // bool platform_finished = false;
-    // Platform->AddIsolateFinishedCallback(MainIsolate, [](void* data) {
-    //     *static_cast<bool*>(data) = true;
-    // }, &platform_finished);
-    Platform->UnregisterIsolate(MainIsolate);
 #endif
-    MainContext.Reset();
+    // MainContext.Reset 触碰 V8（Global::Reset 构造 HandleScope），需持锁；
+    // 保持在各后端公共区域（非 WITH_NODEJS 专属）。锁在此作用域析构，
+    // 先于 MainIsolate->Dispose()。QuickJS 无 THREAD_SAFE 时不编译。
+    {
+#ifdef THREAD_SAFE
+        v8::Locker Locker(MainIsolate);
+#endif
+        MainContext.Reset();
+    }
     MainIsolate->Dispose();
     MainIsolate = nullptr;
 #if WITH_NODEJS
