@@ -1,6 +1,6 @@
 name: unity build plugins
 
-on: 
+on:
   workflow_dispatch:
     inputs:
       websocket:
@@ -11,28 +11,6 @@ on:
         - "2"
         - "3"
         default: '1'
-  push:
-    paths: 
-      - unity/native_src/**
-      - unity/cli/**
-      - unreal/Puerts/Source/JsEnv/Private/V8InspectorImpl.cpp
-      - unreal/Puerts/Source/JsEnv/Private/WebSocketImpl.cpp
-      - unreal/Puerts/Source/JsEnv/Private/V8InspectorImpl.h
-      - unreal/Puerts/Source/JsEnv/Private/PromiseRejectCallback.hpp
-      - unreal/Puerts/ThirdParty/**
-      - .github/workflows/unity_build_plugins.yml
-      - .github/workflows/composites/unity-build-plugins/**
-  pull_request:
-    paths: 
-      - unity/native_src/**
-      - unity/cli/**
-      - unreal/Puerts/Source/JsEnv/Private/V8InspectorImpl.cpp
-      - unreal/Puerts/Source/JsEnv/Private/WebSocketImpl.cpp
-      - unreal/Puerts/Source/JsEnv/Private/V8InspectorImpl.h
-      - unreal/Puerts/Source/JsEnv/Private/PromiseRejectCallback.hpp
-      - unreal/Puerts/ThirdParty/**
-      - .github/workflows/unity_build_plugins.yml
-      - .github/workflows/composites/unity-build-plugins/**
 
 env:
   RUNID: 613573412
@@ -40,7 +18,7 @@ env:
 jobs:
   android:
     runs-on: ubuntu-latest
-    
+
     steps:
       - uses: actions/checkout@v3
       - name: Install NDK
@@ -62,25 +40,15 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           backend: v8_10.6.194
           websocket: ${{ github.event.inputs.websocket || '1' }}
-      - name: BuildAndroidQuickJS
-        uses: ./.github/workflows/composites/unity-build-plugins/android/
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          backend: quickjs
       - name: BuildAndroidNodeJS
         uses: ./.github/workflows/composites/unity-build-plugins/android/
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           backend: nodejs_16
-      - name: BuildAndroidMultBackend
-        uses: ./.github/workflows/composites/unity-build-plugins/android/
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          backend: mult
-          
+
   ohos:
     runs-on: ubuntu-latest
-    
+
     steps:
       - uses: actions/checkout@v3
       - name: Install NDK
@@ -102,16 +70,6 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           backend: v8_10.6.194
           websocket: ${{ github.event.inputs.websocket || '1' }}
-      - name: BuildOHOSQuickJS
-        uses: ./.github/workflows/composites/unity-build-plugins/ohos/
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          backend: quickjs
-      - name: BuildOHOSMultBackend
-        uses: ./.github/workflows/composites/unity-build-plugins/ohos/
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          backend: mult
 
   ios:
     runs-on: macos-14
@@ -129,21 +87,11 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           backend: v8_10.6.194
           websocket: ${{ github.event.inputs.websocket || '1' }}
-      - name: BuildiOSQuickjs
-        uses: ./.github/workflows/composites/unity-build-plugins/ios/
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          backend: quickjs
       - name: BuildiOSNodeJS
         uses: ./.github/workflows/composites/unity-build-plugins/ios/
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           backend: nodejs_16
-      - name: BuildiOSMultBackend
-        uses: ./.github/workflows/composites/unity-build-plugins/ios/
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          backend: mult
 
   osx:
     runs-on: macos-14
@@ -166,16 +114,6 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           backend: nodejs_16
-      - name: BuildOSXQuickJS
-        uses: ./.github/workflows/composites/unity-build-plugins/osx/
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          backend: quickjs
-      - name: BuildOSXMultBackend
-        uses: ./.github/workflows/composites/unity-build-plugins/osx/
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          backend: mult
 
   windows:
     runs-on: windows-2022
@@ -193,25 +131,15 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           backend: v8_10.6.194
           websocket: ${{ github.event.inputs.websocket || '1' }}
-      - name: BuildWindowsQuickjs
-        uses: ./.github/workflows/composites/unity-build-plugins/windows/
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          backend: quickjs
       - name: BuildWindowsNodeJS
         uses: ./.github/workflows/composites/unity-build-plugins/windows/
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           backend: nodejs_16
-      - name: BuildWindowsMultBackend
-        uses: ./.github/workflows/composites/unity-build-plugins/windows/
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          backend: mult
 
   linux64:
     runs-on: ubuntu-latest
-    
+
     steps:
       - uses: actions/checkout@v3
       - name: BuildLinux
@@ -225,29 +153,8 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           backend: v8_10.6.194
           websocket: ${{ github.event.inputs.websocket || '1' }}
-      - name: BuildWindowsQuickjs
-        uses: ./.github/workflows/composites/unity-build-plugins/linux/
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          backend: quickjs
       - name: BuildLinuxNodeJS
         uses: ./.github/workflows/composites/unity-build-plugins/linux/
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           backend: nodejs_16
-      - name: BuildLinuxMultBackend
-        uses: ./.github/workflows/composites/unity-build-plugins/linux/
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          backend: mult
-          
-  wasm:
-    runs-on: ubuntu-latest
-    
-    steps:
-      - uses: actions/checkout@v3
-      - name: BuildWasm
-        uses: ./.github/workflows/composites/unity-build-plugins/wasm/
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          backend: quickjs
